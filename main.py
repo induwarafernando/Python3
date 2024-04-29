@@ -1,5 +1,6 @@
 import tkinter as tk
 import json
+from tkinter import ttk
 
 class FinanceTrackerApp(tk.Tk):
     def __init__(self):
@@ -21,13 +22,10 @@ class FinanceTrackerApp(tk.Tk):
         self.search_button = tk.Button(self, text="Search", command=self.search_transactions)
         self.search_button.pack()
 
-        self.transactions_text = tk.Text(self, height=10, width=50)
-        self.transactions_text.pack()
-
         # Create buttons for managing transactions
         self.add_button = tk.Button(self, text="Add Transaction", command=self.add_transaction_window)
         self.add_button.pack()
-        self.view_button = tk.Button(self, text="View Transactions", command=self.display_transactions)
+        self.view_button = tk.Button(self, text="View Transactions", command=self.view_transactions)
         self.view_button.pack()
         self.update_button = tk.Button(self, text="Update Transaction", command=self.update_transaction_window)
         self.update_button.pack()
@@ -47,16 +45,32 @@ class FinanceTrackerApp(tk.Tk):
 
     def search_transactions(self):
         search_date = self.search_entry.get().strip()
-        filtered_transactions = [t for t in self.transactions if t['date'] == search_date]
-        self.display_transactions(filtered_transactions)
+        if search_date:
+            filtered_transactions = [t for t in self.transactions if t['date'] == search_date]
+            self.display_transactions(filtered_transactions)
+        else:
+            self.display_transactions()
 
-    def update_transactions_display(self):
-        self.transactions_text.delete('1.0', tk.END)
-        for transaction in self.transactions:
-            self.transactions_text.insert(tk.END, f"Date: {transaction['date']}, Description: {transaction['description']}, Amount: {transaction['amount']}, Category: {transaction['category']}\n")
+    def display_transactions(self, transactions=None):
+        if transactions is None:
+            transactions = self.transactions
 
-    def display_transactions(self):
-        self.update_transactions_display()
+        # Create a new window for displaying transactions
+        self.transactions_window = tk.Toplevel(self)
+        self.transactions_window.title("View Transactions")
+
+        # Create a treeview to display transactions
+        tree = ttk.Treeview(self.transactions_window, columns=("Date", "Description", "Amount", "Category"))
+        tree.heading("#0", text="ID")
+        tree.heading("Date", text="Date")
+        tree.heading("Description", text="Description")
+        tree.heading("Amount", text="Amount")
+        tree.heading("Category", text="Category")
+
+        for transaction in transactions:
+            tree.insert("", "end", text=transaction['id'], values=(transaction['date'], transaction['description'], transaction['amount'], transaction['category']))
+
+        tree.pack()
 
     def add_transaction_window(self):
         # Create a new window for adding transaction
@@ -90,8 +104,12 @@ class FinanceTrackerApp(tk.Tk):
         transaction_id = len(self.transactions) + 1
         transaction = {'id': transaction_id, 'date': date, 'description': description, 'amount': amount, 'category': category}
         self.transactions.append(transaction)
-        self.update_transactions_display()
         self.add_window.destroy()  # Close the add window after adding the transaction
+        self.save_data()  # Save the data after adding transaction
+        self.search_transactions()  # Update the displayed transactions
+
+    def view_transactions(self):
+        self.display_transactions()
 
     def update_transaction_window(self):
         # Create a new window for updating transaction
@@ -103,23 +121,23 @@ class FinanceTrackerApp(tk.Tk):
         self.transaction_id_entry = tk.Entry(self.update_window)
         self.transaction_id_entry.pack()
 
-        tk.Button(self.update_window, text="Update", command=self.update_transaction).pack()
+        tk.Button(self.update_window, text="Update", command=self.update_transaction_data_window).pack()
 
-    def update_transaction(self):
+    def update_transaction_data_window(self):
         transaction_id = int(self.transaction_id_entry.get().strip())
-        for transaction in self.transactions:
-            if transaction['id'] == transaction_id:
-                self.update_window.destroy()  # Close the update window after updating the transaction
-                self.update_transaction_data(transaction)
-                return
-        print("Transaction not found.")
+        transaction = self.get_transaction_by_id(transaction_id)
+        if transaction:
+            self.update_window.destroy()
+            self.update_transaction_data(transaction)
+        else:
+            print("Transaction not found.")
 
     def update_transaction_data(self, transaction):
         # Create a new window for updating transaction data
         self.update_data_window = tk.Toplevel()
         self.update_data_window.title("Update Transaction Data")
 
-        # Create and pack widgets for updating transaction data
+        # Populate entry fields with existing data
         tk.Label(self.update_data_window, text="Date (YYYY-MM-DD):").pack()
         self.date_entry = tk.Entry(self.update_data_window)
         self.date_entry.insert(0, transaction['date'])
@@ -140,14 +158,17 @@ class FinanceTrackerApp(tk.Tk):
         self.category_entry.insert(0, transaction['category'])
         self.category_entry.pack()
 
-        tk.Button(self.update_data_window, text="Update", command=lambda: self.update_transaction_data_apply(transaction)).pack()
+        tk.Button(self.update_data_window, text="Update", command=lambda: self.update_transaction_data_confirm(transaction)).pack()
 
-    def update_transaction_data_apply(self, transaction):
+    def update_transaction_data_confirm(self, transaction):
+        # Update transaction data
         transaction['date'] = self.date_entry.get().strip()
         transaction['description'] = self.description_entry.get().strip()
         transaction['amount'] = float(self.amount_entry.get().strip())
         transaction['category'] = self.category_entry.get().strip()
-        self.update_transactions_display()
+
+        # Update displayed transactions
+        self.search_transactions()
         self.update_data_window.destroy()  # Close the update data window after updating the transaction data
 
     def delete_transaction_window(self):
@@ -167,8 +188,9 @@ class FinanceTrackerApp(tk.Tk):
         for i, transaction in enumerate(self.transactions):
             if transaction['id'] == transaction_id:
                 del self.transactions[i]
-                self.update_transactions_display()
                 self.delete_window.destroy()  # Close the delete window after deleting the transaction
+                self.save_data()  # Save the data after deleting transaction
+                self.search_transactions()  # Update the displayed transactions
                 return
         print("Transaction not found.")
 
@@ -191,6 +213,12 @@ class FinanceTrackerApp(tk.Tk):
         with open('transactions.json', 'w') as file:
             json.dump(self.transactions, file)
         print("Data saved successfully.")
+
+    def get_transaction_by_id(self, transaction_id):
+        for transaction in self.transactions:
+            if transaction['id'] == transaction_id:
+                return transaction
+        return None
 
 if __name__ == "__main__":
     app = FinanceTrackerApp()
