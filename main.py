@@ -25,15 +25,15 @@ class FinanceTrackerApp(tk.Tk):
         self.transactions_text.pack()
 
         # Create buttons for managing transactions
-        self.add_button = tk.Button(self, text="Add Transaction", command=self.add_transaction)
+        self.add_button = tk.Button(self, text="Add Transaction", command=self.add_transaction_window)
         self.add_button.pack()
-        self.view_button = tk.Button(self, text="View Transactions", command=self.view_transactions)
+        self.view_button = tk.Button(self, text="View Transactions", command=self.display_transactions)
         self.view_button.pack()
-        self.update_button = tk.Button(self, text="Update Transaction", command=self.update_transaction)
+        self.update_button = tk.Button(self, text="Update Transaction", command=self.update_transaction_window)
         self.update_button.pack()
-        self.delete_button = tk.Button(self, text="Delete Transaction", command=self.delete_transaction)
+        self.delete_button = tk.Button(self, text="Delete Transaction", command=self.delete_transaction_window)
         self.delete_button.pack()
-        self.summary_button = tk.Button(self, text="Summary", command=self.display_summary)
+        self.summary_button = tk.Button(self, text="Summary", command=self.display_summary_window)
         self.summary_button.pack()
         self.save_button = tk.Button(self, text="Save Data", command=self.save_data)
         self.save_button.pack()
@@ -42,10 +42,8 @@ class FinanceTrackerApp(tk.Tk):
         try:
             with open('transactions.json', 'r') as file:
                 self.transactions = json.load(file)
-            self.update_transactions_display()
-            print("Data loaded successfully.")
         except FileNotFoundError:
-            print("No saved data found.")
+            pass
 
     def search_transactions(self):
         search_date = self.search_entry.get().strip()
@@ -57,56 +55,137 @@ class FinanceTrackerApp(tk.Tk):
         for transaction in self.transactions:
             self.transactions_text.insert(tk.END, f"Date: {transaction['date']}, Description: {transaction['description']}, Amount: {transaction['amount']}, Category: {transaction['category']}\n")
 
-    def display_transactions(self, transactions):
-        self.transactions_text.delete('1.0', tk.END)
-        for transaction in transactions:
-            self.transactions_text.insert(tk.END, f"Date: {transaction['date']}, Description: {transaction['description']}, Amount: {transaction['amount']}, Category: {transaction['category']}\n")
+    def display_transactions(self):
+        self.update_transactions_display()
+
+    def add_transaction_window(self):
+        # Create a new window for adding transaction
+        self.add_window = tk.Toplevel()
+        self.add_window.title("Add Transaction")
+
+        # Create and pack widgets for adding transaction
+        tk.Label(self.add_window, text="Date (YYYY-MM-DD):").pack()
+        self.date_entry = tk.Entry(self.add_window)
+        self.date_entry.pack()
+
+        tk.Label(self.add_window, text="Description:").pack()
+        self.description_entry = tk.Entry(self.add_window)
+        self.description_entry.pack()
+
+        tk.Label(self.add_window, text="Amount:").pack()
+        self.amount_entry = tk.Entry(self.add_window)
+        self.amount_entry.pack()
+
+        tk.Label(self.add_window, text="Category:").pack()
+        self.category_entry = tk.Entry(self.add_window)
+        self.category_entry.pack()
+
+        tk.Button(self.add_window, text="Add", command=self.add_transaction).pack()
 
     def add_transaction(self):
-        date = self.search_entry.get().strip()
-        description = input("Enter the description: ")  # Input via Tkinter not implemented here
-        amount = float(input("Enter the amount: "))    # Input via Tkinter not implemented here
-        category = input("Enter the category: ")        # Input via Tkinter not implemented here
+        date = self.date_entry.get().strip()
+        description = self.description_entry.get().strip()
+        amount = float(self.amount_entry.get().strip())
+        category = self.category_entry.get().strip()
         transaction_id = len(self.transactions) + 1
         transaction = {'id': transaction_id, 'date': date, 'description': description, 'amount': amount, 'category': category}
         self.transactions.append(transaction)
         self.update_transactions_display()
-        print("Transaction added successfully.")
+        self.add_window.destroy()  # Close the add window after adding the transaction
 
-    def view_transactions(self):
-        self.update_transactions_display()
+    def update_transaction_window(self):
+        # Create a new window for updating transaction
+        self.update_window = tk.Toplevel()
+        self.update_window.title("Update Transaction")
+
+        # Create and pack widgets for updating transaction
+        tk.Label(self.update_window, text="Transaction ID to update:").pack()
+        self.transaction_id_entry = tk.Entry(self.update_window)
+        self.transaction_id_entry.pack()
+
+        tk.Button(self.update_window, text="Update", command=self.update_transaction).pack()
 
     def update_transaction(self):
-        transaction_id = int(input("Enter the transaction ID to update: "))  # Input via Tkinter not implemented here
+        transaction_id = int(self.transaction_id_entry.get().strip())
         for transaction in self.transactions:
             if transaction['id'] == transaction_id:
-                transaction['date'] = input("Enter the new date (YYYY-MM-DD): ")         # Input via Tkinter not implemented here
-                transaction['description'] = input("Enter the new description: ")          # Input via Tkinter not implemented here
-                transaction['amount'] = float(input("Enter the new amount: "))             # Input via Tkinter not implemented here
-                transaction['category'] = input("Enter the new category: ")                    # Input via Tkinter not implemented here
-                self.update_transactions_display()
-                print("Transaction updated successfully.")
+                self.update_window.destroy()  # Close the update window after updating the transaction
+                self.update_transaction_data(transaction)
                 return
         print("Transaction not found.")
 
+    def update_transaction_data(self, transaction):
+        # Create a new window for updating transaction data
+        self.update_data_window = tk.Toplevel()
+        self.update_data_window.title("Update Transaction Data")
+
+        # Create and pack widgets for updating transaction data
+        tk.Label(self.update_data_window, text="Date (YYYY-MM-DD):").pack()
+        self.date_entry = tk.Entry(self.update_data_window)
+        self.date_entry.insert(0, transaction['date'])
+        self.date_entry.pack()
+
+        tk.Label(self.update_data_window, text="Description:").pack()
+        self.description_entry = tk.Entry(self.update_data_window)
+        self.description_entry.insert(0, transaction['description'])
+        self.description_entry.pack()
+
+        tk.Label(self.update_data_window, text="Amount:").pack()
+        self.amount_entry = tk.Entry(self.update_data_window)
+        self.amount_entry.insert(0, transaction['amount'])
+        self.amount_entry.pack()
+
+        tk.Label(self.update_data_window, text="Category:").pack()
+        self.category_entry = tk.Entry(self.update_data_window)
+        self.category_entry.insert(0, transaction['category'])
+        self.category_entry.pack()
+
+        tk.Button(self.update_data_window, text="Update", command=lambda: self.update_transaction_data_apply(transaction)).pack()
+
+    def update_transaction_data_apply(self, transaction):
+        transaction['date'] = self.date_entry.get().strip()
+        transaction['description'] = self.description_entry.get().strip()
+        transaction['amount'] = float(self.amount_entry.get().strip())
+        transaction['category'] = self.category_entry.get().strip()
+        self.update_transactions_display()
+        self.update_data_window.destroy()  # Close the update data window after updating the transaction data
+
+    def delete_transaction_window(self):
+        # Create a new window for deleting transaction
+        self.delete_window = tk.Toplevel()
+        self.delete_window.title("Delete Transaction")
+
+        # Create and pack widgets for deleting transaction
+        tk.Label(self.delete_window, text="Transaction ID to delete:").pack()
+        self.delete_id_entry = tk.Entry(self.delete_window)
+        self.delete_id_entry.pack()
+
+        tk.Button(self.delete_window, text="Delete", command=self.delete_transaction).pack()
+
     def delete_transaction(self):
-        transaction_id = int(input("Enter the transaction ID to delete: "))   # Input via Tkinter not implemented here
+        transaction_id = int(self.delete_id_entry.get().strip())
         for i, transaction in enumerate(self.transactions):
             if transaction['id'] == transaction_id:
                 del self.transactions[i]
                 self.update_transactions_display()
-                print("Transaction deleted successfully.")
+                self.delete_window.destroy()  # Close the delete window after deleting the transaction
                 return
         print("Transaction not found.")
 
-    def display_summary(self):
+    def display_summary_window(self):
+        # Create a new window for displaying summary
+        self.summary_window = tk.Toplevel()
+        self.summary_window.title("Summary")
+
+        # Calculate summary
         total_income = sum(transaction['amount'] for transaction in self.transactions if transaction['amount'] > 0)
         total_expenses = sum(transaction['amount'] for transaction in self.transactions if transaction['amount'] < 0)
         net_balance = total_income + total_expenses
-        print(f"\nSummary:")
-        print(f"Total Income: {total_income}")
-        print(f"Total Expenses: {total_expenses}")
-        print(f"Net Balance: {net_balance}")
+
+        # Display summary
+        tk.Label(self.summary_window, text=f"Total Income: {total_income}").pack()
+        tk.Label(self.summary_window, text=f"Total Expenses: {total_expenses}").pack()
+        tk.Label(self.summary_window, text=f"Net Balance: {net_balance}").pack()
 
     def save_data(self):
         with open('transactions.json', 'w') as file:
